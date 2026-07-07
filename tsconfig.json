@@ -1,0 +1,52 @@
+{
+  // Visit https://aka.ms/tsconfig to read more about this file
+  "compilerOptions": {
+    "strict": true,
+    "skipLibCheck": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "baseUrl": "./",
+    "paths": {
+      "@types/*": [
+        "node_modules/@types/*"
+      ],
+      "@domain/*": [
+        "src/domain/*"
+      ],
+      "@app/*": [
+        "src/application/*"
+      ],
+      "@infra/*": [
+        "src/infrastructure/*"
+      ],
+      "@core/*": [
+        "src/core/*"
+      ],
+      "@shared/*": [
+        "src/shared/*"
+      ]
+    },
+    "target": "ES2022",
+    "module": "CommonJS",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true, // Necesario para Inversify/DI
+    "emitDecoratorMetadata": true, // Necesario para Inversify/DI
+    "types": [
+      "reflect-metadata",
+      "jest",
+      "node"
+    ],
+  },
+  "include": [
+    "src/**/*.ts",
+    "main.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "tests"
+  ]
+}

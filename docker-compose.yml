@@ -1,0 +1,80 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: api_proof_wesdom_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: api_proof_wesdom
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U root -d api_proof_wesdom" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin_wesdom
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "admin@wesdom.com" # 🔄 CORREGIDO: Debe tener formato de correo
+      PGADMIN_DEFAULT_PASSWORD: "root"
+    ports:
+      - "5050:80"
+    depends_on:
+      db:
+        condition: service_healthy # 🔄 ALINEADO: Espera a que la BD esté saludable
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api_proof_wesdom
+    restart: unless-stopped
+    environment:
+      - PORT=8080
+      - PORT_HTTPS=8443
+      - NODE_ENV=development
+      - DB_HOST=api_proof_wesdom_db
+      - DB_PORT=5432
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
+      - DB_NAME=api_proof_wesdom
+      - ENCRYPTION_KEY=b857e52379ee2987b5e60cf756e4ef1b363aa85ee8dfabf321dce05f5e1adeaa
+      - ENCRYPTION_SALT=473f49630ce9d4e31494c84d779b4946
+      - JWT_SECRET=Cj1bVjhRo46v0J4ZYZxRqOlZhv/ySP6X+C84tGCuAZI=
+      - DB_DRIVER="postgres"
+      - DB_DRIVER=postgres
+      - JWT_EXPIRES_IN=5h
+      - SMTP_HOST=
+      - SMTP_PORT=
+      - SMTP_USER=
+      - SMTP_PASSWORD=
+      - FRONTEND_URL=
+      - LOG_LEVEL=production
+      - HOST=
+      - GEMINI_API_KEY=
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config:/app/config
+    networks:
+      # 👈 3. Añadimos la red aquí
+      - wesdom_net
+    depends_on:
+      db:
+        condition: service_healthy
+    links:
+      - db:db
+networks:
+  wesdom_net:
+    driver: bridge
+
+volumes:
+  pgdata:
+    name: miniwallet_pgdata

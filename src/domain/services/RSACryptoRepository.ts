@@ -26,7 +26,7 @@ export class RSACryptoRepository implements ICryptoRepository {
     public decryptRSA(encryptedText: string): string {
         const decryptor = new JSEncrypt();
         // Definir la ruta al archivo
-        const certPath = path.join(process.cwd(), 'key/privada.pem');
+        const certPath = path.join(process.cwd(), 'config/key/privada.pem');
         console.log("certPath", certPath);
         // Leer el contenido como string UTF-8
         const pemContent = fs.readFileSync(certPath, 'utf8');

@@ -23,7 +23,7 @@ export class UsersRoutes {
         // ==========================================
         // 1. RUTA DE REGISTRO
         // ==========================================
-        this.router.post('/register', this.ipRestrictionMiddleware.execute, (req, res, next) => {
+        this.router.post('/register', (req, res, next) => {
             this.controller.create(req, res, next);
         });
 

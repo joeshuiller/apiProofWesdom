@@ -1,9 +1,9 @@
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, OneToMany, PrimaryColumn, UpdateDateColumn } from "typeorm"
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, OneToMany, PrimaryColumn, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
 import { UsersEntity } from "./UsersEntity"
 
 @Entity("roles")
 export class RolesEntity {
-    @PrimaryColumn("uuid")
+    @PrimaryGeneratedColumn("uuid")
     id!: string;
 
     @Column()

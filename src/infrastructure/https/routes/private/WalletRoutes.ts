@@ -19,8 +19,20 @@ export class WalletRoutes {
     private initializeRoutes(): void {
         this.router.use(this.authMiddleware.execute);
 
+        this.router.post('/register', (req, res, next) => {
+            this.controller.create(req, res, next);
+        });
+
         this.router.get('/', (req, res, next) => {
             this.controller.findAll(req, res, next);
+        });
+
+        this.router.get('/:id', (req, res, next) => {
+            this.controller.findById(req, res, next);
+        });
+
+        this.router.get('/user/:id', (req, res, next) => {
+            this.controller.findByUserId(req, res, next);
         });
 
         this.router.post('/transfer', (req, res, next) => {
@@ -29,6 +41,10 @@ export class WalletRoutes {
 
         this.router.post('/', (req, res, next) => {
             this.controller.create(req, res, next);
+        });
+
+        this.router.put('/:id', (req, res, next) => {
+            this.controller.update(req, res, next);
         });
 
     }

@@ -6,14 +6,15 @@ import {
     UpdateDateColumn,
     VersionColumn,
     DeleteDateColumn,
-    ManyToOne
+    ManyToOne,
+    PrimaryGeneratedColumn
 } from "typeorm";
 import { UsersEntity } from "./UsersEntity";
 
 @Entity("wallets")
 export class WalletEntity {
-    @PrimaryColumn("uuid")
-    id!: string;
+    @PrimaryGeneratedColumn("uuid")
+    id?: string;
 
     @Column({ type: 'decimal', precision: 10, scale: 2, nullable: false, default: 0 })
     availableBalance!: number;

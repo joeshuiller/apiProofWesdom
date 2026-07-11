@@ -4,26 +4,26 @@ import { IUserRepository } from "../repositories/IUserRepository";
 import { UsersRequestDTO } from "../../application/dtos/request/UsersRequestDTO";
 import { UsersResponseDTO } from "../../application/dtos/response/UsersResponseDTO";
 import { UsersMapperService } from "./mappers/UsersMapperService";
-import { injectable } from "inversify";
+import { injectable, inject } from "inversify";
+import { BaseRepository } from "./BaseRepository";
+import { TYPES } from "@app/dtos/models/types";
+import { TransactionContext } from "./transaction/TransactionContext";
+import { DataSource } from "typeorm";
 
 @injectable()
-export class UsersRepository implements IUserRepository {
+export class UsersRepository extends BaseRepository<UsersEntity> implements IUserRepository {
   private usersMapper: UsersMapperService;
 
-  constructor() {
+  constructor(
+    @inject(TYPES.TransactionContext) txContext: TransactionContext,
+    @inject(TYPES.DataSource) dataSource: DataSource
+  ) {
+    super(UsersEntity, txContext, dataSource);
     this.usersMapper = new UsersMapperService();
   }
 
-
-  // 👇 1. LA MEJORA PRINCIPAL (El Patrón Getter) 👇
-  // Retrasamos la obtención del repositorio hasta el momento exacto de la consulta.
-  // Esto evita el error de "No metadata for UsersEntity was found".
-  private get repository() {
-    return AppDataSource.getRepository(UsersEntity);
-  }
-
   async findById(id: string): Promise<UsersResponseDTO | null> {
-    const user = await this.repository.findOne({
+    const user = await this.currentRepository.findOne({
       where: { id: id }, // El filtro va dentro de 'where'
       relations: ['rolesId'] // 👈 Agrega aquí las relaciones que necesites
     });
@@ -31,7 +31,7 @@ export class UsersRepository implements IUserRepository {
   }
 
   async findByEmail(email: string): Promise<UsersResponseDTO | null> {
-    const user = await this.repository.findOne({
+    const user = await this.currentRepository.findOne({
       where: { email }, // El filtro va dentro de 'where'
       relations: ['rolesId'] // 👈 Agrega aquí las relaciones que necesites
     });
@@ -39,22 +39,22 @@ export class UsersRepository implements IUserRepository {
   }
 
   async update(id: string, user: UsersRequestDTO): Promise<UsersResponseDTO | null> {
-    await this.repository.update(id, this.usersMapper.toEntity(user));
+    await this.currentRepository.update(id, this.usersMapper.toEntity(user));
     return await this.findById(id);
   }
 
   async delete(id: string): Promise<boolean> {
-    const result = await this.repository.delete(id);
+    const result = await this.currentRepository.delete(id);
     return (result.affected ?? 0) > 0;
   }
 
   async save(user: UsersRequestDTO): Promise<UsersResponseDTO | null> {
-    const userList = await this.repository.save(this.usersMapper.toEntity(user));
+    const userList = await this.currentRepository.save(this.usersMapper.toEntity(user));
     return this.usersMapper.toUpdateEntity(userList);
   }
 
   async findAll(idRol: string): Promise<UsersResponseDTO[] | null> {
-    const users = await this.repository.find({
+    const users = await this.currentRepository.find({
       where: {
         rolesId: { id: idRol }
       },

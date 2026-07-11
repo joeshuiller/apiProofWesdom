@@ -8,7 +8,7 @@ export class WalletMapperService implements Mapper<WalletEntity, WalletRequestDT
     toDTO(entity: WalletEntity): WalletRequestDTO {
         const data: WalletRequestDTO = new WalletRequestDTO();
         data.id = entity.id;
-        data.usersId = entity.usersId.id;
+        data.usersId = entity.usersId.id ?? '0fa';
         data.availableBalance = entity.availableBalance;
         data.accountingBalance = entity.accountingBalance;
         data.version = entity.version;
@@ -16,7 +16,6 @@ export class WalletMapperService implements Mapper<WalletEntity, WalletRequestDT
     }
     toEntity(dto: WalletRequestDTO): WalletEntity {
         return {
-            id: dto.id ?? '',
             usersId: { id: dto.usersId } as UsersEntity,
             availableBalance: dto.availableBalance,
             accountingBalance: dto.accountingBalance,
@@ -25,8 +24,8 @@ export class WalletMapperService implements Mapper<WalletEntity, WalletRequestDT
     }
     toUpdateEntity(entity: WalletEntity): WalletResponseDTO {
         const data: WalletResponseDTO = new WalletResponseDTO();
-        data.id = entity.id;
-        data.usersId = entity.usersId.id;
+        data.id = entity.id ?? '';
+        data.users = entity.usersId;
         data.availableBalance = entity.availableBalance;
         data.accountingBalance = entity.accountingBalance;
         data.version = entity.version;

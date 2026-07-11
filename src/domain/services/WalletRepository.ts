@@ -1,62 +1,98 @@
-import { AppDataSource } from "../../infrastructure/database/dataSource";
-import { injectable } from "inversify";
+import { injectable, inject } from "inversify";
+import { DataSource } from "typeorm";
 import { IWalletRepository } from "@domain/repositories/IWalletRepository";
 import { WalletResponseDTO } from "@app/dtos/response/WalletResponseDTO";
 import { WalletEntity } from "@domain/entities";
 import { WalletRequestDTO } from "@app/dtos/request/WalletRequestDTO";
-import { EntityManager } from "typeorm";
 import { WalletMapperService } from "./mappers/WalletMapperService";
+import { BaseRepository } from "./BaseRepository";
+import { TYPES } from "@app/dtos/models/types";
+import { TransactionContext } from "./transaction/TransactionContext";
 
 @injectable()
-export class WalletRepository implements IWalletRepository {
+export class WalletRepository extends BaseRepository<WalletEntity> implements IWalletRepository {
     private WalletMapper: WalletMapperService;
 
-    constructor() {
+    constructor(
+        @inject(TYPES.TransactionContext) txContext: TransactionContext,
+        @inject(TYPES.DataSource) dataSource: DataSource
+    ) {
+        super(WalletEntity, txContext, dataSource);
         this.WalletMapper = new WalletMapperService();
     }
 
-    async save(wallet: WalletRequestDTO): Promise<WalletResponseDTO | null> {
-        const walletSaved = await this.repository.save(this.WalletMapper.toEntity(wallet));
-        return walletSaved ? this.WalletMapper.toUpdateEntity(walletSaved) : null;
-    }
-
-    // 👇 1. LA MEJORA PRINCIPAL (El Patrón Getter) 👇
-    // Retrasamos la obtención del repositorio hasta el momento exacto de la consulta.
-    // Esto evita el error de "No metadata for WalletEntity was found".
-    private get repository() {
-        return AppDataSource.getRepository(WalletEntity);
-    }
+    // =========================================================================
+    // 🟢 LECTURAS COMUNES (Rápidas, Seguras y sin bloquear la BD)
+    // =========================================================================
 
     async findById(id: string): Promise<WalletResponseDTO | null> {
-        const user = await this.repository.findOne({
-            where: { id: id }, // El filtro va dentro de 'where'
-            relations: ['rolesId'] // 👈 Agrega aquí las relaciones que necesites
+        const wallet = await this.currentRepository.findOne({
+            where: { id: id },
+            relations: ['usersId']
+            // 🌟 Sin lock: perfecto para dashboards y queries del día a día
         });
-        return user ? this.WalletMapper.toUpdateEntity(user) : null;
+        return wallet ? this.WalletMapper.toUpdateEntity(wallet) : null;
     }
 
     async findByUserId(userId: string): Promise<WalletResponseDTO | null> {
-        const user = await this.repository.findOne({
-            where: { usersId: { id: userId } }, // El filtro va dentro de 'where'
-            relations: ['usersId'] // 👈 Agrega aquí las relaciones que necesites
+        const wallet = await this.currentRepository.findOne({
+            where: { usersId: { id: userId } },
+            relations: ['usersId']
+            // 🌟 Sin lock
         });
-        return user ? this.WalletMapper.toUpdateEntity(user) : null;
-    }
-
-    async saveMultiple(wallets: WalletRequestDTO[], txManager?: EntityManager): Promise<void> {
-        const manager = txManager || this.repository.manager;
-        const ormWallets = wallets.map(w => {
-            return this.WalletMapper.toEntity(w);
-        });
-        await manager.save(WalletEntity, ormWallets);
+        return wallet ? this.WalletMapper.toUpdateEntity(wallet) : null;
     }
 
     async findAll(): Promise<WalletResponseDTO[] | null> {
-        const Wallet = await this.repository.find();
+        const wallets = await this.currentRepository.find({
+            relations: ['usersId']
+        });
 
-        if (!Wallet || Wallet.length === 0) {
+        if (!wallets || wallets.length === 0) {
             return null;
         }
-        return Wallet.map((dto) => this.WalletMapper.toUpdateEntity(dto));
+        return wallets.map((entity) => this.WalletMapper.toUpdateEntity(entity));
+    }
+
+    // =========================================================================
+    // 🛡️ LECTURAS CON BLOQUEO (Exclusivas para transacciones dentro del UnitOfWork)
+    // =========================================================================
+
+    async findByIdForUpdate(id: string): Promise<WalletResponseDTO | null> {
+        const wallet = await this.currentRepository.findOne({
+            where: { id: id },
+            relations: ['usersId'],
+            lock: { mode: 'pessimistic_write' } // 🔒 Bloquea concurrentes (Exige transacción)
+        });
+        return wallet ? this.WalletMapper.toUpdateEntity(wallet) : null;
+    }
+
+    async findByUserIdForUpdate(userId: string): Promise<WalletResponseDTO | null> {
+        const wallet = await this.currentRepository.findOne({
+            where: { usersId: { id: userId } },
+            relations: ['usersId'],
+            lock: { mode: 'pessimistic_write' } // 🔒 Bloquea concurrentes (Exige transacción)
+        });
+        return wallet ? this.WalletMapper.toUpdateEntity(wallet) : null;
+    }
+
+    // =========================================================================
+    // ✍️ OPERACIONES DE ESCRITURA (Automáticamente transaccionales gracias a currentRepository)
+    // =========================================================================
+
+    async update(wallet: WalletRequestDTO, id: string): Promise<WalletResponseDTO | null> {
+        await this.currentRepository.update(id, this.WalletMapper.toEntity(wallet));
+        return this.findById(id);
+    }
+
+    async save(wallet: WalletRequestDTO): Promise<WalletResponseDTO | null> {
+        const walletSaved = await this.currentRepository.save(this.WalletMapper.toEntity(wallet));
+        return walletSaved ? this.WalletMapper.toUpdateEntity(walletSaved) : null;
+    }
+
+    async saveMultiple(wallets: WalletRequestDTO[]): Promise<void> {
+        // 🌟 Ya no necesitamos pasar el parametro 'txManager', currentRepository maneja el Contexto asíncrono
+        const ormWallets = wallets.map(w => this.WalletMapper.toEntity(w));
+        await this.currentRepository.save(ormWallets);
     }
 }

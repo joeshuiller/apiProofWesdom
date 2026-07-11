@@ -10,15 +10,14 @@ export class WalletHistoryMapperService implements Mapper<WalletHistoryEntity, W
     toDTO(entity: WalletHistoryEntity): WalletHistoryRequestDTO {
         const status = entity.status as TransactionStatus;
         const data: WalletHistoryRequestDTO = new WalletHistoryRequestDTO();
-        data.senderId = entity.senderId.id;
-        data.receiverId = entity.receiverId.id;
+        data.senderId = entity.senderId.id ?? 'lk';
+        data.receiverId = entity.receiverId.id ?? 'hj';
         data.amount = entity.amount;
         data.status = status;
         return data;
     }
     toEntity(dto: WalletHistoryRequestDTO): WalletHistoryEntity {
         return {
-            id: "dd",
             senderId: { id: dto.senderId } as UsersEntity,
             receiverId: { id: dto.receiverId } as UsersEntity,
             amount: dto.amount,
@@ -28,7 +27,7 @@ export class WalletHistoryMapperService implements Mapper<WalletHistoryEntity, W
     toUpdateEntity(entity: WalletHistoryEntity): WalletHistoryResponseDTO {
         const data: WalletHistoryResponseDTO = new WalletHistoryResponseDTO();
         const status = entity.status as TransactionStatus;
-        data.id = entity.id;
+        data.id = entity.id ?? '';
         data.sender = entity.senderId;
         data.receiver = entity.receiverId;
         data.amount = entity.amount;

@@ -5,14 +5,15 @@ import {
     CreateDateColumn,
     UpdateDateColumn,
     DeleteDateColumn,
-    ManyToOne
+    ManyToOne,
+    PrimaryGeneratedColumn
 } from "typeorm";
 import { UsersEntity } from "./UsersEntity";
 
 @Entity("wallets_history")
 export class WalletHistoryEntity {
-    @PrimaryColumn("uuid")
-    id!: string;
+    @PrimaryGeneratedColumn("uuid")
+    id?: string;
 
     @Column({ type: 'decimal', precision: 10, scale: 2, nullable: false, default: 0 })
     amount!: number;

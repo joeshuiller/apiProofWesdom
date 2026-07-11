@@ -19,13 +19,13 @@ export class WalletController {
 
     public create = async (req: Request, res: Response, next: NextFunction): Promise<void | Response> => {
         try {
-            const tokenDecrypt = this.processSecureDataUseCase.decrypt(req.body.encryptedKey);
-            const decryptedBody = this.processSecureDataUseCase.decryptJsonComplex(req.body.encryptedData, tokenDecrypt);
-            const dataValid = WalletInitRequestSchema.parse(decryptedBody);
+            const tokenDecrypt = JSON.parse(this.processSecureDataUseCase.decrypt(req.body.encryptedKey));
+            const decryptedBody = this.processSecureDataUseCase.decryptJsonComplex(req.body.encryptedData, tokenDecrypt.key);
+            const dataValid = WalletInitRequestSchema.parse(decryptedBody.data);
             const userData: WalletInitRequest = dataValid;
             const data = await this.walletUseCase.save(userData);
             await this.bruteForceUseCase.clearAttempts(req.socket.remoteAddress!);
-            return this.securityUtils.sendEncryptedResponse(res, data, 201);
+            return this.securityUtils.sendEncryptedResponse(res, this.processSecureDataUseCase.encryptJsonComplex(data), 201);
         } catch (error) {
             await this.bruteForceUseCase.registerFailedAttempt(req.socket.remoteAddress!);
             next(error); // ¡Crucial para que el GlobalErrorHandler atrape las fallas!
@@ -34,14 +34,15 @@ export class WalletController {
 
     public createTransaction = async (req: Request, res: Response, next: NextFunction): Promise<void | Response> => {
         try {
-            const tokenDecrypt = this.processSecureDataUseCase.decrypt(req.body.encryptedKey);
-            const decryptedBody = this.processSecureDataUseCase.decryptJsonComplex(req.body.encryptedData, tokenDecrypt);
-            const dataValid = WalletRequestSchema.parse(decryptedBody);
+            const tokenDecrypt = JSON.parse(this.processSecureDataUseCase.decrypt(req.body.encryptedKey));
+            const decryptedBody = this.processSecureDataUseCase.decryptJsonComplex(req.body.encryptedData, tokenDecrypt.key);
+            const dataValid = WalletRequestSchema.parse(decryptedBody.data);
             const userData: WalletRequest = dataValid;
             const data = await this.walletUseCase.create(userData);
             await this.bruteForceUseCase.clearAttempts(req.socket.remoteAddress!);
-            return this.securityUtils.sendEncryptedResponse(res, data, 201);
+            return this.securityUtils.sendEncryptedResponse(res, this.processSecureDataUseCase.encryptJsonComplex(data), 201);
         } catch (error) {
+            console.log("error", error);
             await this.bruteForceUseCase.registerFailedAttempt(req.socket.remoteAddress!);
             next(error); // ¡Crucial para que el GlobalErrorHandler atrape las fallas!
         }
@@ -54,7 +55,6 @@ export class WalletController {
             await this.bruteForceUseCase.clearAttempts(req.socket.remoteAddress!);
             return this.securityUtils.sendEncryptedResponse(res, encryptedData, 200);
         } catch (error) {
-            console.log("error", error);
             await this.bruteForceUseCase.registerFailedAttempt(req.socket.remoteAddress!);
             next(error);
         }
@@ -62,10 +62,39 @@ export class WalletController {
 
     public findById = async (req: Request, res: Response, next: NextFunction): Promise<void | Response> => {
         try {
+            console.log("req.params.id", req.params.id);
             const data = await this.walletUseCase.findById(req.params.id);
             const encryptedData = this.processSecureDataUseCase.encryptJsonComplex(data);
             await this.bruteForceUseCase.clearAttempts(req.socket.remoteAddress!);
             return this.securityUtils.sendEncryptedResponse(res, encryptedData, 200);
+        } catch (error) {
+            console.log("error", error);
+            await this.bruteForceUseCase.registerFailedAttempt(req.socket.remoteAddress!);
+            next(error);
+        }
+    }
+    public findByUserId = async (req: Request, res: Response, next: NextFunction): Promise<void | Response> => {
+        try {
+            console.log("req.params.id", req.params.id);
+            const data = await this.walletUseCase.findByUserId(req.params.id);
+            const encryptedData = this.processSecureDataUseCase.encryptJsonComplex(data);
+            await this.bruteForceUseCase.clearAttempts(req.socket.remoteAddress!);
+            return this.securityUtils.sendEncryptedResponse(res, encryptedData, 200);
+        } catch (error) {
+            console.log("error", error);
+            await this.bruteForceUseCase.registerFailedAttempt(req.socket.remoteAddress!);
+            next(error);
+        }
+    }
+    public update = async (req: Request, res: Response, next: NextFunction): Promise<void | Response> => {
+        try {
+            const tokenDecrypt = this.processSecureDataUseCase.decrypt(req.body.encryptedKey);
+            const decryptedBody = this.processSecureDataUseCase.decryptJsonComplex(req.body.encryptedData, tokenDecrypt);
+            const dataValid = WalletInitRequestSchema.parse(decryptedBody);
+            const userData: WalletInitRequest = dataValid;
+            const data = await this.walletUseCase.update(userData, req.params.id);
+            await this.bruteForceUseCase.clearAttempts(req.socket.remoteAddress!);
+            return this.securityUtils.sendEncryptedResponse(res, this.processSecureDataUseCase.encryptJsonComplex(data), 200);
         } catch (error) {
             await this.bruteForceUseCase.registerFailedAttempt(req.socket.remoteAddress!);
             next(error);

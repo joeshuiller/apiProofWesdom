@@ -1,12 +1,12 @@
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, ManyToOne, OneToMany, PrimaryColumn, UpdateDateColumn } from "typeorm"
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
 import { RolesEntity } from "./RolesEntity"
 import { WalletEntity } from "./WalletEntity";
 import { WalletHistoryEntity } from "./WalletHistoryEntity";
 
 @Entity("users")
 export class UsersEntity {
-    @PrimaryColumn("uuid")
-    id!: string;
+    @PrimaryGeneratedColumn("uuid")
+    id?: string;
 
     @Column()
     name!: string

@@ -114,7 +114,7 @@ export class UsersController {
 
             const token = await this.jwtUsers.generateToken({
                 userId: user.id.toString(),
-                rolesId: user.rolesId.toString(),
+                rolesId: user?.roles?.id ?? 'null',
                 email: user.email
             });
             console.log("token", token);
@@ -171,7 +171,7 @@ export class UsersController {
 
             const token = await this.jwtUsers.generateToken({
                 userId: user.id.toString(),
-                rolesId: user.rolesId.toString(),
+                rolesId: user?.roles?.id ?? 'null',
                 email: user.email
             });
             const encryptedToken = this.processSecureDataUseCase.encryptJsonComplex(

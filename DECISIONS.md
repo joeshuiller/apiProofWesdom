@@ -46,6 +46,8 @@ Se eligió **PostgreSQL** como motor de base de datos relacional y **TypeORM** c
 
 ## Nota sobre el uso de Inteligencia Artificial
 
+### ¿Qué se usó para la IA?
+Se optó por el SDK oficial `@google/generative-ai` para interactuar con los modelos fundacionales de Google (Gemini).
 
 ### ¿En qué parte del proceso se utilizó?
 La IA se integró en la capa de aplicación, específicamente en los casos de uso encargados de procesar la entrada de los usuarios. Actúa como el "cerebro" del chatbot:

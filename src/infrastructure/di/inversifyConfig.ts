@@ -11,7 +11,8 @@ import { UserPasswordUseCase } from "@app/use-cases/UserPasswordUseCase";
 import { UsersUseCase } from "@app/use-cases/UsersUseCase";
 import { BruteForceUseCase } from "@app/use-cases/BruteForceUseCase";
 import { ProcessSecureDataUseCase } from "@app/use-cases/ProcessSecureDataUseCase";
-
+import { WalletUseCase } from "@app/use-cases/WalletUseCase";
+import { WalletHistoryUseCase } from "@app/use-cases/WalletHistoryUseCase";
 
 // --- INTERFACES (Dominio) ---
 import { IAuthService } from "@domain/repositories/IAuthService";
@@ -47,6 +48,8 @@ import { Routes } from "@infra/https/routes/Routes";
 import { UsersRoutes } from "@infra/https/routes/public/UsersRoute";
 import { RolesRoutes } from "@infra/https/routes/private/RolesRoute";
 import { WalletRoutes } from "@infra/https/routes/private/WalletRoutes";
+import { WalletHistoryRoutes } from "@infra/https/routes/private/WalletHistoryRoutes";
+
 // --- MIDDLEWARES ---
 import { BruteForceMiddleware } from "@infra/https/middlewares/bruteForceMiddleware";
 import { GlobalErrorHandler } from "@infra/https/middlewares/GlobalErrorHandler";
@@ -58,9 +61,24 @@ import { ValidateMiddleware } from "@infra/https/middlewares/ValidateData";
 import { UtilsData } from "@core/utils/UtilsData";
 import { SecurityUtils } from "@core/utils/SecurityUtils";
 import { CodeGeneratorService } from "@core/utils/CodeGeneratorService";
-import { WalletUseCase } from "@app/use-cases/WalletUseCase";
-import { WalletHistoryUseCase } from "@app/use-cases/WalletHistoryUseCase";
-import { WalletHistoryRoutes } from "@infra/https/routes/private/WalletHistoryRoutes";
+
+// --- SISTEMA TRANSACCIONAL (Senior Context-Aware) ---
+import { TransactionContext } from "@domain/services/transaction/TransactionContext";
+import { UnitOfWork } from "@domain/services/transaction/UnitOfWork";
+import { DataSource } from "typeorm";
+import { AppDataSource } from "@infra/database/dataSource";
+
+// =========================================================================
+// 0. MÓDULO DE BASE DE DATOS Y TRANSACCIONES (ACID)
+// =========================================================================
+export const dataSourceModule = new ContainerModule(({ bind }) => {
+    // Registramos la constante global de TypeORM
+    bind<DataSource>(TYPES.DataSource).toConstantValue(AppDataSource);
+
+    // 🌟 Vinculamos los Tokens de Inversify con sus clases concretas correspondientes
+    bind<TransactionContext>(TYPES.TransactionContext).to(TransactionContext).inSingletonScope();
+    bind<UnitOfWork>(TYPES.UnitOfWork).to(UnitOfWork).inSingletonScope();
+});
 
 // =========================================================================
 // 1. MÓDULO DE REPOSITORIOS (Persistencia / Acceso a Datos)
@@ -96,7 +114,6 @@ export const useCasesModule = new ContainerModule(({ bind }) => {
     bind<ProcessSecureDataUseCase>(TYPES.ProcessSecureDataUseCase).to(ProcessSecureDataUseCase);
     bind<WalletUseCase>(TYPES.WalletUseCase).to(WalletUseCase);
     bind<WalletHistoryUseCase>(TYPES.WalletHistoryUseCase).to(WalletHistoryUseCase);
-
 });
 
 // =========================================================================
@@ -147,6 +164,7 @@ export const utilsModule = new ContainerModule(({ bind }) => {
 const container = new Container();
 
 container.load(
+    dataSourceModule, // 🌟 Cargamos el módulo de transacciones y persistencia actualizado
     repositoriesModule,
     servicesModule,
     useCasesModule,

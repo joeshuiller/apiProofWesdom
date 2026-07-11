@@ -53,4 +53,8 @@ export const TYPES = {
     UtilsData: Symbol.for("UtilsData"),
     SecurityUtils: Symbol.for("SecurityUtils"),
     CodeGeneratorService: Symbol.for("CodeGeneratorService"),
+    UnitOfWork: Symbol.for("UnitOfWork"),
+    TransactionContext: Symbol.for("TransactionContext"),
+    AppDataSource: Symbol.for('AppDataSource'),
+    DataSource: Symbol.for("DataSource"),
 };

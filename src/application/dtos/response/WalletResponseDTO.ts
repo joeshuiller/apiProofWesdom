@@ -1,6 +1,8 @@
+import { UsersDTO } from "../request/UsersDTO";
+
 export class WalletResponseDTO {
     id!: string;
-    usersId!: string;
+    users!: UsersDTO;
     availableBalance!: number;
     accountingBalance!: number;
     version!: number;

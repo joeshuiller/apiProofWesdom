@@ -26,5 +26,9 @@ export class WalletHistoryRoutes {
         this.router.get('/:id', (req, res, next) => {
             this.controller.findById(req, res, next);
         });
+
+        this.router.put('/:id', (req, res, next) => {
+            this.controller.updateStatus(req, res, next);
+        });
     }
 }

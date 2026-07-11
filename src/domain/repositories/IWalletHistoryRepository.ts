@@ -7,4 +7,5 @@ export interface IWalletHistoryRepository {
     save(wallet: WalletHistoryRequestDTO): Promise<WalletHistoryResponseDTO | null>;
     findBysenderId(senderId: string): Promise<WalletHistoryResponseDTO | null>;
     findByReceiverId(receiverId: string): Promise<WalletHistoryResponseDTO | null>;
+    update(wallet: WalletHistoryRequestDTO, id: string): Promise<WalletHistoryResponseDTO | null>
 }

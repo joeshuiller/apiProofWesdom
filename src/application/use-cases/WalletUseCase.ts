@@ -8,23 +8,22 @@ import { UtilsData } from '@core/utils/UtilsData';
 import { TransactionStatus } from "@domain/models/TransactionStatus";
 import { IWalletHistoryRepository } from "@domain/repositories/IWalletHistoryRepository";
 import { IWalletRepository } from '@domain/repositories/IWalletRepository';
+import { UnitOfWork } from "@domain/services/transaction/UnitOfWork";
 import { inject, injectable } from "inversify";
 
 @injectable()
 export class WalletUseCase {
-  private readonly unitOfWork: any
   constructor(
+    @inject(TYPES.UnitOfWork) private readonly unitOfWork: UnitOfWork,
     @inject(TYPES.IWalletRepository) private walletRepository: IWalletRepository,
     @inject(TYPES.IWalletHistoryRepository) private walletHistoryRepository: IWalletHistoryRepository,
-    @inject(TYPES.UtilsData) private readonly utilsData: UtilsData,
   ) {
   }
 
   async create(dto: TransferDTO): Promise<WalletHistoryResponseDTO | null> {
-    return await this.unitOfWork.transaction(async (txContext: any) => {
-      const senderWallet = await this.walletRepository.findById(dto.senderId);
-      const receiverWallet = await this.walletRepository.findById(dto.receiverId);
-
+    return await this.unitOfWork.execute(async () => {
+      const senderWallet = await this.walletRepository.findByUserIdForUpdate(dto.senderId);
+      const receiverWallet = await this.walletRepository.findByUserIdForUpdate(dto.receiverId);
       if (!senderWallet || !receiverWallet) {
         throw new Error("Billetera de origen o destino no encontrada");
       }
@@ -32,17 +31,17 @@ export class WalletUseCase {
       // 1. Dominio puro: El Agregado Wallet maneja la regla de los $1000 USD
       const txStatus = this.debit(dto.amount, senderWallet);
       const newReceiverWallet = this.credit(dto.amount, txStatus.status, receiverWallet);
+      // Persistencia atómica transparente
+      //await this.walletRepository.saveMultiple([txStatus.data, newReceiverWallet]);
+      await this.walletRepository.update(txStatus.data, txStatus.data?.id!);
+      await this.walletRepository.update(newReceiverWallet, newReceiverWallet?.id!);
 
-      // 2. Persistencia atómica
-      await this.walletRepository.saveMultiple([txStatus.data, newReceiverWallet], txContext);
-
-      // 3. Crear registro histórico
+      // Si el guardado del historial falla, el UnitOfWork realiza un ROLLBACK completo automáticamente
       const transaction: WalletHistoryRequestDTO = new WalletHistoryRequestDTO();
       transaction.senderId = dto.senderId;
       transaction.receiverId = dto.receiverId;
       transaction.amount = dto.amount;
       transaction.status = txStatus.status;
-
       return await this.walletHistoryRepository.save(transaction);
     });
   }
@@ -55,9 +54,18 @@ export class WalletUseCase {
     return await this.walletRepository.findById(id);
   }
 
+  async findByUserId(id: string): Promise<WalletResponseDTO | null> {
+    return await this.walletRepository.findByUserId(id);
+  }
+
   async findAll(): Promise<WalletResponseDTO[] | null> {
     return await this.walletRepository.findAll();
   }
+
+  async update(item: WalletRequestDTO, id: string): Promise<WalletResponseDTO | null> {
+    return await this.walletRepository.update(item, id);
+  }
+
 
   // --- REGLAS DE NEGOCIO ---
 
@@ -66,7 +74,7 @@ export class WalletUseCase {
    * @param amount Monto a transferir
    * @returns El estado con el que debe nacer la transacción
    */
-  private debit(amount: number, item: WalletResponseDTO): { status: TransactionStatus, data: WalletResponseDTO } {
+  private debit(amount: number, item: WalletResponseDTO): { status: TransactionStatus, data: WalletRequestDTO } {
     if (amount <= 0) {
       throw new Error("El monto de la transferencia debe ser mayor a cero.");
     }
@@ -74,20 +82,26 @@ export class WalletUseCase {
     if (item.availableBalance < amount) {
       throw new Error("Saldo insuficiente."); // Este error mapeará a un HTTP 422
     }
-
+    const data: WalletRequestDTO = {
+      id: item.id,
+      availableBalance: Number(item.availableBalance),
+      accountingBalance: Number(item.accountingBalance),
+      usersId: item.users?.id ?? '0',
+      version: item.version + 1
+    }
     // Siempre bloqueamos el dinero disponible para evitar un doble gasto
-    item.availableBalance -= amount;
+    data.availableBalance = data.availableBalance - amount;
 
     // Regla de Compliance: Tensión del requerimiento
     if (amount > 1000) {
       // El monto se descuenta del disponible (no puede gastarlo de nuevo),
       // pero se mantiene en el saldo contable hasta que el admin lo apruebe.
-      return { status: TransactionStatus.PENDING, data: item };
+      return { status: TransactionStatus.PENDING, data: data };
     }
 
     // Si no requiere revisión, se descuenta de ambos saldos
-    item.accountingBalance -= amount;
-    return { status: TransactionStatus.COMPLETED, data: item };
+    data.accountingBalance = data.accountingBalance - amount;
+    return { status: TransactionStatus.COMPLETED, data: data };
   }
 
   /**
@@ -95,22 +109,24 @@ export class WalletUseCase {
    * @param amount Monto a recibir
    * @param status Estado de la transacción entrante
    */
-  private credit(amount: number, status: TransactionStatus, item: WalletResponseDTO): WalletResponseDTO {
+  private credit(amount: number, status: TransactionStatus, item: WalletResponseDTO): WalletRequestDTO {
     if (amount <= 0) {
       throw new Error("El monto a recibir debe ser mayor a cero.");
     }
-
-    if (status === TransactionStatus.COMPLETED) {
-      // Transferencia directa: suma a ambos saldos
-      item.availableBalance += amount;
-      item.accountingBalance += amount;
-    } else if (status === TransactionStatus.PENDING) {
-      // Experiencia de usuario (UX): 
-      // Se refleja en su saldo contable (lo ve "entrando"),
-      // pero NO en su saldo disponible (no puede gastarlo aún).
-      item.accountingBalance += amount;
+    const data: WalletRequestDTO = {
+      id: item.id,
+      availableBalance: Number(item.availableBalance),
+      accountingBalance: Number(item.accountingBalance),
+      usersId: item.users?.id ?? '0',
+      version: item.version + 1
     }
-    return item;
+    if (status === TransactionStatus.COMPLETED) {
+      data.availableBalance = data.availableBalance + amount;
+      data.accountingBalance = data.accountingBalance + amount;
+    } else if (status === TransactionStatus.PENDING) {
+      data.accountingBalance = data.accountingBalance + amount;
+    }
+    return data;
   }
 
   /**

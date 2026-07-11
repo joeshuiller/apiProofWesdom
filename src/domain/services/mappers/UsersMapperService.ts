@@ -18,7 +18,6 @@ export class UsersMapperService implements Mapper<UsersEntity, UsersRequestDTO, 
     }
     toEntity(dto: UsersRequestDTO): UsersEntity {
         return {
-            id: "0",
             name: dto.name,
             surName: dto.surName,
             typeDocumentID: dto.typeDocumentID,
@@ -33,7 +32,7 @@ export class UsersMapperService implements Mapper<UsersEntity, UsersRequestDTO, 
     }
     toUpdateEntity(entity: UsersEntity): UsersResponseDTO {
         const data: UsersResponseDTO = new UsersResponseDTO();
-        data.id = entity.id;
+        data.id = entity.id ?? "0";
         data.name = entity.name;
         data.surName = entity.surName;
         data.typeDocumentID = entity.typeDocumentID;
@@ -43,7 +42,7 @@ export class UsersMapperService implements Mapper<UsersEntity, UsersRequestDTO, 
         data.password = entity.password;
         data.telephone = entity.telephone;
         data.active = entity.active;
-        data.rolesId = entity.rolesId.id;
+        data.roles = entity.rolesId;
         data.createdAt = entity.createdAt;
         data.updatedAt = entity.updatedAt;
         return data;

@@ -1,3 +1,5 @@
+import { RolesDTO } from "@app/dtos/request/RolesDTO";
+
 export class UsersResponseDTO {
    id!: string;
    name!: string;
@@ -9,7 +11,7 @@ export class UsersResponseDTO {
    imgClients?: string;
    telephone!: string;
    active!: boolean;
-   rolesId!: string;
+   roles?: RolesDTO;
    createdAt?: Date;
    updatedAt?: Date;
    deletedAt?: Date;
